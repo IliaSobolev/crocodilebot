@@ -22,12 +22,17 @@ type JSONDATA struct {
 	WordId string `json:"wordid"`
 }
 
+func (j *JSONDATA) Unmarshal(jsonData []byte) error {
+	return json.Unmarshal(jsonData, j)
+}
+
+func (j *JSONDATA) Marshal() ([]byte, error) {
+	return json.Marshal(j)
+}
+
 func RandomWord(client *redis.Client, ctx context.Context, chat int64, user int64, jsonData []byte) (string, error) {
 	var data JSONDATA
-	err := json.Unmarshal(jsonData, &data)
-	if err != nil {
-		return "", err
-	}
+	data.Unmarshal(jsonData)
 
 	file, err := os.Open("output.txt")
 	if err != nil {
@@ -53,12 +58,9 @@ func RandomWord(client *redis.Client, ctx context.Context, chat int64, user int6
 			data.UserId = strconv.FormatInt(user, 10)
 		}
 
-		encodedData, err := json.Marshal(data)
-		if err != nil {
-			return "", err
-		}
+		encodeddata, err := data.Marshal()
 
-		err = client.Set(ctx, strconv.FormatInt(chat, 10), encodedData, 5*time.Minute).Err()
+		err = client.Set(ctx, strconv.FormatInt(chat, 10), encodeddata, 5*time.Minute).Err()
 		if err != nil {
 			return "", err
 		}
@@ -137,14 +139,11 @@ func main() {
 		return nil
 	})
 	b.Handle("/start", func(c tele.Context) error {
-		chat := c.Chat().ID
-		chatT := c.Chat().Type
-		user := c.Sender().ID
 
-		if chatT == tele.ChatPrivate {
+		if c.Chat().Type == tele.ChatPrivate {
 			return c.Send("Для того чтобы начать игру, добавьте бота в группу")
 		} else {
-			exists, err := client.Exists(ctx, strconv.FormatInt(chat, 10)).Result()
+			exists, err := client.Exists(ctx, strconv.FormatInt(c.Chat().ID, 10)).Result()
 			if err != nil {
 				return err
 			}
@@ -152,7 +151,7 @@ func main() {
 			if exists == 1 {
 				return c.Send("Игра уже началась. Ожидайте 5 минут")
 			} else {
-				_, err := RandomWord(client, ctx, chat, user, jsonData)
+				_, err := RandomWord(client, ctx, c.Chat().ID, c.Sender().ID, jsonData)
 				if err != nil {
 					return err
 				}
@@ -162,9 +161,7 @@ func main() {
 	})
 
 	b.Handle(&this_word, func(c tele.Context) error {
-		chat := c.Chat().ID
-		user := c.Sender().ID
-		val, err := client.Get(ctx, strconv.FormatInt(chat, 10)).Result()
+		val, err := client.Get(ctx, strconv.FormatInt(c.Chat().ID, 10)).Result()
 		if err != nil {
 			return err
 		}
@@ -174,7 +171,7 @@ func main() {
 			return (err)
 		}
 
-		if data.UserId == strconv.FormatInt(user, 10) {
+		if data.UserId == strconv.FormatInt(c.Sender().ID, 10) {
 			return c.Respond(&tele.CallbackResponse{
 				Text:      fmt.Sprintf("Вы загадываете слово: %s", data.WordId),
 				ShowAlert: true,
@@ -189,9 +186,8 @@ func main() {
 	})
 
 	b.Handle(&new_word, func(c tele.Context) error {
-		chat := c.Chat().ID
-		user := c.Sender().ID
-		val, err := client.Get(ctx, strconv.FormatInt(chat, 10)).Result()
+
+		val, err := client.Get(ctx, strconv.FormatInt(c.Chat().ID, 10)).Result()
 		if err != nil {
 			return err
 		}
@@ -201,8 +197,8 @@ func main() {
 			return (err)
 		}
 
-		if data.UserId == strconv.FormatInt(user, 10) {
-			word, err := RandomWord(client, ctx, chat, user, jsonData)
+		if data.UserId == strconv.FormatInt(c.Sender().ID, 10) {
+			word, err := RandomWord(client, ctx, c.Chat().ID, c.Sender().ID, jsonData)
 			if err != nil {
 				return (err)
 			}
