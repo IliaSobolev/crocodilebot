@@ -30,24 +30,9 @@ func (j *JSONDATA) Marshal() ([]byte, error) {
 	return json.Marshal(j)
 }
 
-func RandomWord(client *redis.Client, ctx context.Context, chat int64, user int64, jsonData []byte) (string, error) {
+func RandomWord(client *redis.Client, ctx context.Context, chat int64, user int64, jsonData []byte, lines []string) (string, error) {
 	var data JSONDATA
 	data.Unmarshal(jsonData)
-
-	file, err := os.Open("output.txt")
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	lines := []string{}
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.ReplaceAll(line, " ", "")
-		lines = append(lines, line)
-	}
 
 	if len(lines) > 0 {
 		rand.Seed(time.Now().UnixNano())
@@ -66,7 +51,7 @@ func RandomWord(client *redis.Client, ctx context.Context, chat int64, user int6
 		}
 	}
 
-	return data.WordId, err
+	return data.WordId, nil
 }
 
 func main() {
@@ -92,6 +77,21 @@ func main() {
 		Password: "",
 		DB:       0,
 	})
+
+	file, err := os.Open("output.txt")
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lines := []string{}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.ReplaceAll(line, " ", "")
+		lines = append(lines, line)
+	}
 
 	var (
 		selector = &tele.ReplyMarkup{}
@@ -151,7 +151,7 @@ func main() {
 			if exists == 1 {
 				return c.Send("Игра уже началась. Ожидайте 5 минут")
 			} else {
-				_, err := RandomWord(client, ctx, c.Chat().ID, c.Sender().ID, jsonData)
+				_, err := RandomWord(client, ctx, c.Chat().ID, c.Sender().ID, jsonData, lines)
 				if err != nil {
 					return err
 				}
@@ -198,7 +198,7 @@ func main() {
 		}
 
 		if data.UserId == strconv.FormatInt(c.Sender().ID, 10) {
-			word, err := RandomWord(client, ctx, c.Chat().ID, c.Sender().ID, jsonData)
+			word, err := RandomWord(client, ctx, c.Chat().ID, c.Sender().ID, jsonData, lines)
 			if err != nil {
 				return (err)
 			}
