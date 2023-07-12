@@ -115,6 +115,7 @@ func main() {
 			if err != nil {
 				return nil
 			}
+
 			var data JSONDATA
 			err = json.Unmarshal([]byte(val), &data)
 			if err != nil {
@@ -165,11 +166,9 @@ func main() {
 		if err != nil {
 			return err
 		}
+
 		var data JSONDATA
-		err = json.Unmarshal([]byte(val), &data)
-		if err != nil {
-			return (err)
-		}
+		data.Unmarshal([]byte(val))
 
 		if data.UserId == strconv.FormatInt(c.Sender().ID, 10) {
 			return c.Respond(&tele.CallbackResponse{
@@ -191,11 +190,9 @@ func main() {
 		if err != nil {
 			return err
 		}
+
 		var data JSONDATA
-		err = json.Unmarshal([]byte(val), &data)
-		if err != nil {
-			return (err)
-		}
+		data.Unmarshal([]byte(val))
 
 		if data.UserId == strconv.FormatInt(c.Sender().ID, 10) {
 			word, err := RandomWord(client, ctx, c.Chat().ID, c.Sender().ID, jsonData, lines)
