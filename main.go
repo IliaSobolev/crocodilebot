@@ -87,22 +87,15 @@ func main() {
 	scanner := bufio.NewScanner(file)
 	lines := make([]string, 81809)
 	i := 0
-	var sb strings.Builder
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.ReplaceAll(line, " ", "")
-		sb.WriteString(line)
-		lines[i] = sb.String()
+		lines[i] = line
 		i++
 		if i >= 81809 {
 			break
 		}
-		//fmt.Println("начало")
-		//fmt.Println(lines)
-		//fmt.Println("конец")
-		//time.Sleep(3 * time.Second)
 	}
-
 	var (
 		selector = &tele.ReplyMarkup{}
 
